@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: queuestorm-copilot
+    runtime: python
+    repo: https://github.com/HumairaMahi-03/QueueStormInvestigator-The-Null-Pointers
+    plan: free
+    buildCommand: |
+      apt-get update && apt-get install -y build-essential
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: USE_LLM
+        value: false
+      - key: HIGH_VALUE_THRESHOLD
+        value: 10000
+      - key: REQUEST_TIMEOUT_SECONDS
+        value: 20
+      - key: LOG_LEVEL
+        value: info
