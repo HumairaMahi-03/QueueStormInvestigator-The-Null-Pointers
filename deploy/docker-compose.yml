@@ -1,0 +1,56 @@
+# deploy/docker-compose.yml
+version: '3.8'
+
+services:
+  ticket-triage:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: queuestorm-copilot
+    ports:
+      - "8000:8000"
+    environment:
+      - USE_LLM=${USE_LLM:-false}
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-claude-sonnet-4-6}
+      - HIGH_VALUE_THRESHOLD=${HIGH_VALUE_THRESHOLD:-10000}
+      - REQUEST_TIMEOUT_SECONDS=${REQUEST_TIMEOUT_SECONDS:-20}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ../app:/app/app  # Mount for development (remove in production)
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - queuestorm-network
+
+  # Optional: Add a test runner service
+  test-runner:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: queuestorm-tests
+    environment:
+      - TEST_HOST=queuestorm-copilot
+      - TEST_PORT=8000
+    depends_on:
+      - ticket-triage
+    command: >
+      sh -c "sleep 10 && 
+             python -m pytest tests/ -v --tb=short"
+    volumes:
+      - ../tests:/app/tests
+      - ../samples:/app/samples
+    profiles:
+      - test
+    networks:
+      - queuestorm-network
+
+networks:
+  queuestorm-network:
+    driver: bridge
